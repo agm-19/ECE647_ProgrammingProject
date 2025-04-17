@@ -21,7 +21,7 @@ for idx = 1:length(gammas)
         traj = [traj x];        
     end
 
-    %% Plot x1(k) and x2(k) vs iteration
+    % Plot x1(k) and x2(k) vs iteration
     figure;
     plot(0:max_iter, traj(1,:), 'r-', 'DisplayName', 'x_1(k)');
     hold on;
@@ -31,7 +31,7 @@ for idx = 1:length(gammas)
     legend show;
     grid on;
 
-    %% Plot trajectory on contour plot
+    % Plot trajectory on contour plot
     figure;
     % --- Plot contour and trajectory ---
     [~, h_contour] = contour(x1_grid, x2_grid, f_vals, 50); hold on;
