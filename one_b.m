@@ -33,7 +33,6 @@ for idx = 1:length(gammas)
 
     % Plot trajectory on contour plot
     figure;
-    % --- Plot contour and trajectory ---
     [~, h_contour] = contour(x1_grid, x2_grid, f_vals, 50); hold on;
     set(h_contour, 'DisplayName', 'Contour lines');
     plot(traj(1,:), traj(2,:), 'k.-', 'DisplayName','Trajectory');
