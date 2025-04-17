@@ -14,13 +14,12 @@ for idx = 1:length(gammas)
     x = [0; 0];            % Start at origin
     traj = x;              
     max_iter = 100;
-
     for k = 1:max_iter
         g = df0(x(1), x(2));    % Gradient using the configuration file
         x = x - gamma * g(:);   % Gradient descent
         traj = [traj x];        
     end
-
+    
     % Plot x1(k) and x2(k) vs iteration
     figure;
     plot(0:max_iter, traj(1,:), 'r-', 'DisplayName', 'x_1(k)');
