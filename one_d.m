@@ -1,4 +1,4 @@
-% part1d.m — Dual Gradient Projection
+% Ques. 1(d)
 clc; clear;
 
 gammas = [0.01, 0.2, 0.05];
