@@ -1,4 +1,3 @@
-% Ques. 1(c)
 clc; clear;
 
 gammas = [0.01, 0.2, 0.05];
@@ -16,26 +15,8 @@ for idx = 1:length(gammas)
         g = df0(x(1), x(2))';      % Gradient
         z = x - gamma * g;         % Gradient descent step
 
-        % === Embedded Manual Projection ===
-        % Enforce x1, x2 >= 0
-        z = max(z, 0);
-
-        % Check if constraints are satisfied
-        if 2*z(1) + z(2) >= 3 && z(1) + 2*z(2) >= 3
-            x = z;  % feasible
-        else
-            % Project by shrinking toward feasible point (e.g. [1;1])
-            x_feas = [1;1];
-            alpha = 0.9;
-            for j = 1:50  % limit projection steps
-                z = alpha * z + (1 - alpha) * x_feas;
-                z = max(z, 0);  % ensure non-negativity
-                if 2*z(1) + z(2) >= 3 && z(1) + 2*z(2) >= 3
-                    break;
-                end
-            end
-            x = z;  % after projection
-        end
+        % Project z using a helper function
+        x = project_to_constraints(z);
 
         traj = [traj x];
     end
@@ -65,4 +46,26 @@ for idx = 1:length(gammas)
     title(sprintf('Projected Gradient Trajectory (%s Step)', gamma_labels{idx}));
     xlabel('x_1'); ylabel('x_2');
     legend show; axis equal; grid on; colorbar;
+end
+
+%% Projection Subroutine
+function x_proj = project_to_constraints(z)
+    % Enforce non-negativity
+    z = max(z, 0);
+
+    % Check constraints
+    if 2*z(1) + z(2) >= 3 && z(1) + 2*z(2) >= 3
+        x_proj = z;
+    else
+        x_feas = [1;1];
+        alpha = 0.9;
+        for j = 1:50
+            z = alpha * z + (1 - alpha) * x_feas;
+            z = max(z, 0);  % ensure non-negativity
+            if 2*z(1) + z(2) >= 3 && z(1) + 2*z(2) >= 3
+                break;
+            end
+        end
+        x_proj = z;
+    end
 end
