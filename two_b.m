@@ -1,63 +1,146 @@
-% part2b.m — Dual Gradient Algorithm for Network Utility Maximization
-clc; clear;
-
-% === Load topology ===
-topology;  % loads Link_Capacity, Flow_Weight, Flow_Path
-
-% === Build routing matrix A (L x F) ===
-A = zeros(Num_Links, Num_Flows);
-for i = 1:Num_Flows
-    for j = 1:Max_Links_On_Path
-        link = Flow_Path(i,j);
-        if link ~= -1
-            A(link, i) = 1;
+% Ques. 2(b) Network Rate Control Problem 
+clc; clear all;
+% Reads configuration from topology.m file
+run('topology.m');  
+% Create routing matrix from Flow_Path
+R = zeros(Num_Links, Num_Flows);
+for flow = 1:Num_Flows
+    for link_idx = 1:Max_Links_On_Path
+        link = Flow_Path(flow, link_idx);
+        if link > 0  % -1 indicates no link
+            R(link, flow) = 1;
         end
     end
 end
 
-% === Dual gradient method ===
-gamma = 0.01;  % step size (can tune if needed)
-max_iter = 500;
+c = Link_Capacity';
+w = Flow_Weight';
 
-lambda = zeros(Num_Links, 1);         % initial dual variables
-x_hist = zeros(Num_Flows, max_iter);  % flow rate history
-lambda_hist = zeros(Num_Links, max_iter);  % dual variable history
+% Dual Gradient Algorithm parameters
+num_iterations = 1000;
+step_size = 0.1;  % fast convergence
+    
+% Initialize dual variables (Lagrange multipliers) and flow rates
+lambda = ones(Num_Links, 1);  % Initial dual variables
+x_history = zeros(Num_Flows, num_iterations);  % To store flow rates
+lambda_history = zeros(Num_Links, num_iterations);  % To store dual variables
 
-for k = 1:max_iter
-    x = zeros(Num_Flows, 1);  % flow rates
-
-    % Compute flow rates for current lambda
+% Dual Gradient Algorithm
+for k = 1:num_iterations
+    % Store current lambda
+    lambda_history(:, k) = lambda;
+    % Calculate flow rates based on current lambda
+    x = zeros(Num_Flows, 1);
     for i = 1:Num_Flows
-        links = Flow_Path(i, Flow_Path(i,:) > 0);  % links used by flow i
-        denom = sum(lambda(links));
-        if denom == 0
-            x(i) = 1e6;  % clip to large value
+        % Find which links flow i uses
+        links_used = find(R(:, i));
+        % Calculate sum of lambdas for these links
+        sum_lambda = sum(lambda(links_used));
+        % Update flow rate using formula: x_i = w_i / sum_lambda
+        if sum_lambda > 0
+            x(i) = w(i) / sum_lambda;
         else
-            x(i) = Flow_Weight(i) / denom;
+            x(i) = 10;  % Some large value if sum_lambda is zero
         end
     end
-
-    % === FIXED: Proper vector shapes for dual update ===
-    lambda = lambda + gamma * (A * x - Link_Capacity(:));
-    lambda = max(lambda, 0);  % projection onto λ ≥ 0
-
-    % Store history
-    x_hist(:,k) = x;
-    lambda_hist(:,k) = lambda;
+    
+    % Store current flow rates
+    x_history(:, k) = x;
+    % Update dual variables
+    link_loads = R * x;  % Calculate load on each link
+    lambda = max(0, lambda + step_size * (link_loads - c));  % Projection to non-negative values
 end
 
-% === Plot flow rates ===
+% Plot flow rates convergence
 figure;
-plot(x_hist');
-xlabel('Iteration'); ylabel('Flow Rate x_i');
-title('Evolution of Flow Rates');
-legend(arrayfun(@(i) sprintf('x_%d', i), 1:Num_Flows, 'UniformOutput', false));
+plot(1:num_iterations, x_history, 'LineWidth', 1.5);
+title('Flow Rates Convergence');
+xlabel('Iteration');
+ylabel('Flow Rate');
+legend_flow = cell(1, Num_Flows);
+for i = 1:Num_Flows
+    legend_flow{i} = sprintf('Flow %d', i);
+end
+legend(legend_flow);
 grid on;
 
-% === Plot dual variables ===
+% Plot dual variables' convergence
 figure;
-plot(lambda_hist');
-xlabel('Iteration'); ylabel('Dual Variables \lambda_l');
-title('Evolution of Dual Variables');
-legend(arrayfun(@(l) sprintf('\\lambda_%d', l), 1:Num_Links, 'UniformOutput', false));
+plot(1:num_iterations, lambda_history, 'LineWidth', 1.5);
+title('Dual Variables Convergence');
+xlabel('Iteration');
+ylabel('Dual Variable Value');
+legend_links = cell(1, Num_Links);
+for i = 1:Num_Links
+    legend_links{i} = sprintf('Link %d', i);
+end
+legend(legend_links);
 grid on;
+
+% Display final flow rates and dual variables
+fprintf('Final flow rates:\n');
+for i = 1:Num_Flows
+    fprintf('x%d = %.4f\n', i, x_history(i, end));
+end
+
+fprintf('\nFinal dual variables:\n');
+for i = 1:Num_Links
+    fprintf('lambda%d = %.4f\n', i, lambda_history(i, end));
+end
+
+% Calculate final link loads
+final_link_loads = R * x_history(:, end);
+fprintf('\nFinal link loads vs capacities:\n');
+for i = 1:Num_Links
+    fprintf('Link %d: Load = %.4f, Capacity = %.4f\n', i, final_link_loads(i), c(i));
+end
+
+% Verify optimality of the solution
+fprintf('\nVerifying optimality of solution:\n');
+
+% 1. Check primal feasibility
+link_loads = R * x_history(:, end);
+primal_feasible = all(link_loads <= c + 1e-6);  % Adding small tolerance
+fprintf('1. Primal feasibility (Rx <= c): %s\n', string(primal_feasible));
+
+% 2. Check dual feasibility
+dual_feasible = all(lambda_history(:, end) >= 0);
+fprintf('2. Dual feasibility (lambda >= 0): %s\n', string(dual_feasible));
+
+% 3. Check complementary slackness
+comp_slack = true;
+fprintf('3. Complementary slackness:\n');
+for i = 1:Num_Links
+    slack = abs(lambda_history(i, end) * (link_loads(i) - c(i)));
+    if slack > 1e-6
+        comp_slack = false;
+        fprintf('   Failed for link %d: lambda = %.6f, (Rx-c) = %.6f, product = %.6f\n', ...
+                i, lambda_history(i, end), link_loads(i) - c(i), slack);
+    end
+end
+fprintf('Overall complementary slackness satisfied: %s\n', string(comp_slack));
+
+% 4. Check stationarity
+stationarity = true;
+fprintf('4. Stationarity condition (x_i = w_i / sum_j(lambda_j * R_ji)):\n');
+for i = 1:Num_Flows
+    links_used = find(R(:, i));
+    sum_lambda = sum(lambda_history(links_used, end));
+    expected_x = w(i) / sum_lambda;
+    diff = abs(x_history(i, end) - expected_x);
+    
+    if diff > 1e-6
+        stationarity = false;
+        fprintf('   Failed for flow %d: Actual x = %.6f, Expected x = %.6f, Diff = %.6f\n', ...
+                i, x_history(i, end), expected_x, diff);
+    end
+end
+fprintf('   Overall stationarity condition satisfied: %s\n', string(stationarity));
+
+% Overall optimality
+fprintf('\nOverall optimality conditions satisfied: %s\n', ...
+        string(primal_feasible && dual_feasible && comp_slack && stationarity));
+
+% Calculate utility value
+utility = sum(w .* log(x_history(:, end)));
+fprintf('\nFinal utility value: %.6f\n', utility);
