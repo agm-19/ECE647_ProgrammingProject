@@ -1,6 +1,7 @@
+% Ques 1. (c)
 clc; clear;
 
-gammas = [0.01, 0.2, 0.05];
+gammas = [0.01, 0.11, 0.05];
 gamma_labels = {'Too Small', 'Too Large', 'Just Right'};
 
 [x1_grid, x2_grid] = meshgrid(-1:0.05:3, -1:0.05:3);
@@ -49,23 +50,14 @@ for idx = 1:length(gammas)
 end
 
 %% Projection Subroutine
-function x_proj = project_to_constraints(z)
-    % Enforce non-negativity
-    z = max(z, 0);
-
-    % Check constraints
-    if 2*z(1) + z(2) >= 3 && z(1) + 2*z(2) >= 3
-        x_proj = z;
-    else
-        x_feas = [1;1];
-        alpha = 0.9;
-        for j = 1:50
-            z = alpha * z + (1 - alpha) * x_feas;
-            z = max(z, 0);  % ensure non-negativity
-            if 2*z(1) + z(2) >= 3 && z(1) + 2*z(2) >= 3
-                break;
-            end
-        end
-        x_proj = z;
+function x_proj = project_to_constraints(x)
+    x = max(x, 0);  % Project to non-negative orthant
+    % Iterate toward feasible region if constraints violated
+    while (2*x(1) + x(2) < 3) || (x(1) + 2*x(2) < 3)
+        % Move slightly in feasible direction
+        grad = [2*x(1) + x(2) - 3; x(1) + 2*x(2) - 3];
+        x = x + 0.01 * [1; 1] .* (grad < 0); 
+        x = max(x, 0);  % Enforce non-negativity again
     end
+    x_proj = x;
 end
