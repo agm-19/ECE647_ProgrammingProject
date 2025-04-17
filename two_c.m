@@ -1,59 +1,88 @@
-% part2c.m — Verify optimality of flow rates from part 2b
+% Ques. 2(c)
+% Verification of optimality for the network rate control problem
+% This code should be run after two_b.m so that it can share the workspace
+% Get the final flow rates and dual variables
+x_final = x_history(:, end);
+lambda_final = lambda_history(:, end);
 
-% Load final values from previous run:
-x_final = x_hist(:, end);
-lambda_final = lambda_hist(:, end);
+% 1. Verify primal feasibility: Rx ≤ c
+link_loads = R * x_final;
+fprintf('Verifying optimality of solution:\n\n');
+fprintf('1. Primal feasibility (Rx ≤ c):\n');
 
-% Rebuild A matrix
-topology;
-A = zeros(Num_Links, Num_Flows);
-for i = 1:Num_Flows
-    for j = 1:Max_Links_On_Path
-        link = Flow_Path(i,j);
-        if link ~= -1
-            A(link, i) = 1;
-        end
+primal_feasible = true;
+for i = 1:Num_Links
+    feasible_i = link_loads(i) <= c(i) + 1e-6;  % Small tolerance
+    fprintf('   Link %d: Load %.6f, Capacity %.6f, Feasible: %s\n', ...
+            i, link_loads(i), c(i), string(feasible_i));
+    if ~feasible_i
+        primal_feasible = false;
     end
 end
+fprintf('Overall primal feasibility: %s\n\n', string(primal_feasible));
 
-% === 1. Primal feasibility: A x ≤ C ===
-Ax = A * x_final;
-feasible = all(Ax <= Link_Capacity(:) + 1e-3);  % small tolerance
-
-% === 2. Dual feasibility: lambda ≥ 0 ===
-dual_feasible = all(lambda_final >= -1e-6);
-
-% === 3. Stationarity: w_i / x_i = sum over lambda on path ===
-stationarity_ok = true;
-for i = 1:Num_Flows
-    links = Flow_Path(i, Flow_Path(i,:) > 0);
-    dual_sum = sum(lambda_final(links));
-    lhs = Flow_Weight(i) / x_final(i);
-    if abs(lhs - dual_sum) > 1e-3
-        fprintf('❌ Flow %d: Stationarity mismatch. LHS=%.4f, RHS=%.4f\n', i, lhs, dual_sum);
-        stationarity_ok = false;
+% 2. Verify dual feasibility: λ ≥ 0
+fprintf('2. Dual feasibility (λ ≥ 0):\n');
+dual_feasible = true;
+for i = 1:Num_Links
+    feasible_i = lambda_final(i) >= 0;
+    fprintf('λ%d = %.6f, Feasible: %s\n', i, lambda_final(i), string(feasible_i));
+    if ~feasible_i
+        dual_feasible = false;
     end
 end
+fprintf('Overall dual feasibility: %s\n\n', string(dual_feasible));
 
-% === 4. Complementary slackness: λ_l * (A x - C)_l = 0 ===
-slack = lambda_final .* (Ax - Link_Capacity(:));
-comp_slack_ok = all(abs(slack) < 1e-3);
-
-% === Final Result ===
-fprintf('\n--- Verification Results ---\n');
-fprintf('Primal Feasibility: %s\n', tern(feasible));
-fprintf('Dual Feasibility:   %s\n', tern(dual_feasible));
-fprintf('Stationarity:       %s\n', tern(stationarity_ok));
-fprintf('Comp. Slackness:    %s\n', tern(comp_slack_ok));
-
-if feasible && dual_feasible && stationarity_ok && comp_slack_ok
-    fprintf('✅ All KKT conditions satisfied. Final flow is optimal.\n');
-else
-    fprintf('❌ Some conditions failed. Final flow may not be optimal.\n');
+% 3. Verify complementary slackness: λᵢ(Rx-c)ᵢ = 0
+fprintf('3. Complementary slackness (λᵢ(Rx-c)ᵢ = 0):\n');
+comp_slack = true;
+for i = 1:Num_Links
+    slack_product = lambda_final(i) * (link_loads(i) - c(i));
+    slack_condition = abs(slack_product) < 1e-6;  % Should be close to zero
+    fprintf('Link %d: λ = %.6f, (Rx-c) = %.6f, Product = %.9f, Satisfied: %s\n', i, lambda_final(i), link_loads(i) - c(i), slack_product, string(slack_condition));
+    if ~slack_condition
+        comp_slack = false;
+    end
 end
+fprintf('   Overall complementary slackness: %s\n\n', string(comp_slack));
 
-% Helper: ternary formatter
-function out = tern(flag)
-    out = '✅ YES';
-    if ~flag, out = '❌ NO'; end
+% 4. Verify stationarity: xᵢ = wᵢ/∑ⱼλⱼrⱼᵢ
+fprintf('4. Stationarity condition (xᵢ = wᵢ/∑ⱼλⱼrⱼᵢ):\n');
+stationarity = true;
+for i = 1:Num_Flows
+    links_used = find(R(:, i));
+    sum_lambda = sum(lambda_final(links_used));
+    expected_x = w(i) / sum_lambda;
+    diff = abs(x_final(i) - expected_x);
+    stationarity_i = diff < 1e-6;  % Should be very close
+    
+    fprintf('Flow %d: w = %.6f, sum(λ) = %.6f\n', i, w(i), sum_lambda);
+    fprintf('Actual x = %.6f, Expected x = %.6f, Difference = %.9f, Satisfied: %s\n', x_final(i), expected_x, diff, string(stationarity_i));
+    
+    if ~stationarity_i
+        stationarity = false;
+    end
 end
+fprintf('Overall stationarity condition: %s\n\n', string(stationarity));
+
+% 5. Overall optimality verification
+fprintf('5. Overall optimality:\n');
+fprintf('Primal feasibility: %s\n', string(primal_feasible));
+fprintf('Dual feasibility: %s\n', string(dual_feasible));
+fprintf('Complementary slackness: %s\n', string(comp_slack));
+fprintf('Stationarity: %s\n', string(stationarity));
+fprintf('ALL CONDITIONS SATISFIED: %s\n\n', string(primal_feasible && dual_feasible && comp_slack && stationarity));
+
+% 6. Calculate and display the utility value
+utility = sum(w .* log(x_final));
+fprintf('6. Final utility value: %.6f\n', utility);
+
+% Visualize the verification - show flows and capacities
+figure;
+bar_data = [link_loads, c];
+bar(bar_data);
+title('Link Loads vs. Capacities');
+xlabel('Link');
+ylabel('Rate');
+legend('Link Load', 'Link Capacity');
+grid on;
