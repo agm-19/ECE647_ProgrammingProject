@@ -19,7 +19,7 @@ for idx = 1:length(gammas)
     x0 = [1; 1];  % Feasible initial x
 
     for k = 1:100
-        % === Inner minimization: Minimize Lagrangian over x1,x2 >= 0 ===
+        % Inner minimization: Minimize Lagrangian over x1,x2 >= 0
         lagrangian = @(x) f0(x(1), x(2)) + ...
             lambda(1)*(3 - 2*x(1) - x(2)) + ...
             lambda(2)*(3 - x(1) - 2*x(2));
@@ -28,7 +28,7 @@ for idx = 1:length(gammas)
         x = fmincon(lagrangian, x0, [], [], [], [], [0 0], [], [], opts);
         x0 = x;  % use warm-start for next iteration
 
-        % === Dual variable update ===
+        % Dual variable update
         g1 = 3 - 2*x(1) - x(2);
         g2 = 3 - x(1) - 2*x(2);
         lambda = max(lambda + gamma * [g1; g2], 0);  % projection onto lambda >= 0
@@ -37,7 +37,7 @@ for idx = 1:length(gammas)
         traj_lambda = [traj_lambda lambda];
     end
 
-    %% Plot primal x1 and x2 evolution
+    % Plot primal x1 and x2 evolution
     figure;
     plot(0:size(traj_x,2)-1, traj_x(1,:), 'r', 'DisplayName','x_1');
     hold on;
@@ -46,7 +46,7 @@ for idx = 1:length(gammas)
     xlabel('Iteration'); ylabel('Value');
     legend show; grid on;
 
-    %% Plot dual lambda evolution
+    % Plot dual lambda evolution
     figure;
     plot(0:size(traj_lambda,2)-1, traj_lambda(1,:), 'r--', 'DisplayName','\lambda_1');
     hold on;
@@ -55,7 +55,7 @@ for idx = 1:length(gammas)
     xlabel('Iteration'); ylabel('Lambda value');
     legend show; grid on;
 
-    %% Plot trajectory on contour
+    % Plot trajectory on contour
     figure;
     [~, h_contour] = contour(x1_grid, x2_grid, f_vals, 50); hold on;
     set(h_contour, 'DisplayName', 'Contour lines');
