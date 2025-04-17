@@ -14,9 +14,9 @@ fprintf('--- Part (b): Unconstrained ---\n');
 fprintf('Gradient norm at final x: %.4e\n', norm(grad_b));
 
 if norm(grad_b) < tol
-    fprintf('✅ Conclusion: Part (b) solution is optimal.\n\n');
+    fprintf('Part (b) - Optimal.\n\n');
 else
-    fprintf('❌ Conclusion: Part (b) solution is NOT optimal.\n\n');
+    fprintf('Part (b) - NOT optimal.\n\n');
 end
 
 %% === Part (c): Gradient Projection ===
@@ -24,7 +24,7 @@ fprintf('--- Part (c): Constrained (Projection) ---\n');
 g1_c = 2*x_c(1) + x_c(2);
 g2_c = x_c(1) + 2*x_c(2);
 
-% Check all 4 constraints
+% Checking all 4 constraints
 feasible = g1_c >= 3 - tol && g2_c >= 3 - tol && x_c(1) >= 0 - tol && x_c(2) >= 0 - tol;
 
 fprintf('2x1 + x2 = %.4f (>= 3?)\n', g1_c);
@@ -33,9 +33,9 @@ fprintf('x1 = %.4f (>= 0?)\n', x_c(1));
 fprintf('x2 = %.4f (>= 0?)\n', x_c(2));
 
 if feasible
-    fprintf('✅ Conclusion: Part (c) solution is feasible and satisfies constraints. Likely optimal.\n\n');
+    fprintf('Part (c) solution is feasible and satisfies constraints. Likely optimal.\n\n');
 else
-    fprintf('❌ Conclusion: Part (c) solution violates constraints. NOT optimal.\n\n');
+    fprintf('Part (c) solution violates constraints. NOT optimal.\n\n');
 end
 
 %% === Part (d): Dual Gradient Method ===
@@ -56,7 +56,7 @@ fprintf('λ1 * g1 = %.4e\n', cs1);
 fprintf('λ2 * g2 = %.4e\n', cs2);
 
 if norm(stationarity) < tol && abs(cs1) < tol && abs(cs2) < tol && all(lambda_d >= -tol)
-    fprintf('✅ Conclusion: Part (d) solution satisfies KKT. Optimal.\n');
+    fprintf('Part (d) solution satisfies KKT. Optimal.\n');
 else
-    fprintf('❌ Conclusion: Part (d) solution does NOT satisfy KKT. Not optimal.\n');
+    fprintf('Part (d) solution does NOT satisfy KKT. Not optimal.\n');
 end
