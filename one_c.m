@@ -1,4 +1,4 @@
-% part1c.m — Gradient Projection with Embedded Projection Function
+% Ques. 1(c)
 clc; clear;
 
 gammas = [0.01, 0.2, 0.05];
